@@ -638,5 +638,29 @@ output with spaces
 code block content
 ```")))))
 
+(ert-deftest agent-shell--ensure-executable-local-test ()
+  "Test `agent-shell--ensure-executable' with local executables."
+  ;; Test with a command that exists (sh should exist on most systems)
+  (let ((default-directory temporary-file-directory))
+    (should-not (agent-shell--ensure-executable "sh")))
+
+  ;; Test with a command that doesn't exist
+  (let ((default-directory temporary-file-directory))
+    (should-error (agent-shell--ensure-executable "nonexistent-command-xyz123")
+                  :type 'error)))
+
+(ert-deftest agent-shell--ensure-executable-remote-test ()
+  "Test `agent-shell--ensure-executable' respects remote directories.
+This test verifies that the function uses TRAMP-aware executable
+checking when `default-directory' is a remote path."
+  ;; Mock a remote directory
+  (let ((default-directory "/ssh:testhost:/tmp/"))
+    ;; We can't actually test remote execution without TRAMP setup,
+    ;; but we can verify the function doesn't crash when given
+    ;; a remote path and that it uses the remote-aware code path.
+    ;; The function should error since we don't have a real TRAMP connection.
+    (should-error (agent-shell--ensure-executable "sh")
+                  :type 'error)))
+
 (provide 'agent-shell-tests)
 ;;; agent-shell-tests.el ends here
