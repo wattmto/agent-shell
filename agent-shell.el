@@ -1381,7 +1381,7 @@ Set NEW-SESSION to start a separate new session."
         (agent-shell-completion-mode +1))
       (agent-shell--setup-modeline)
       (setq-local agent-shell--transcript-file (agent-shell--init-transcript config)))
-    shell-buffer))
+    shell-buffer)))
 
 (cl-defun agent-shell--delete-dialog-block (&key state block-id)
   "Delete dialog block with STATE and BLOCK-ID."
