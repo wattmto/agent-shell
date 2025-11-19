@@ -1333,22 +1333,20 @@ Set NEW-SESSION to start a separate new session."
     (error "Please update shell-maker to version 0.84.1 or newer"))
   (unless (version<= "0.6.1" acp-package-version)
     (error "Please update acp.el to version 0.6.1 or newer"))
-  (let ((cwd (agent-shell-cwd)))
-    (with-temp-buffer ;; client-maker needs a buffer (use a temp one)
-      (setq default-directory cwd) ;; Set directory context for TRAMP-aware executable check
-      (unless (and (map-elt config :client-maker)
-                   (funcall (map-elt config :client-maker) (current-buffer)))
-        (error "No way to create a new client"))
-      (agent-shell--ensure-executable
-       (map-elt (funcall (map-elt config :client-maker) (current-buffer)) :command)
-       (map-elt config :install-instructions)))
-    (let* ((shell-maker-config (agent-shell--make-shell-maker-config
-                                :prompt (map-elt config :shell-prompt)
-                                :prompt-regexp (map-elt config :shell-prompt-regexp)))
-           (agent-shell--shell-maker-config shell-maker-config)
-           (default-directory cwd)
-           (shell-buffer
-            (shell-maker-start agent-shell--shell-maker-config
+  (with-temp-buffer ;; client-maker needs a buffer (use a temp one)
+    (unless (and (map-elt config :client-maker)
+                 (funcall (map-elt config :client-maker) (current-buffer)))
+      (error "No way to create a new client"))
+    (agent-shell--ensure-executable
+     (map-elt (funcall (map-elt config :client-maker) (current-buffer)) :command)
+     (map-elt config :install-instructions)))
+  (let* ((shell-maker-config (agent-shell--make-shell-maker-config
+                              :prompt (map-elt config :shell-prompt)
+                              :prompt-regexp (map-elt config :shell-prompt-regexp)))
+         (agent-shell--shell-maker-config shell-maker-config)
+         (default-directory (agent-shell-cwd))
+         (shell-buffer
+          (shell-maker-start agent-shell--shell-maker-config
                              no-focus
                              (when agent-shell-show-welcome-message
                                (map-elt config :welcome-function))
@@ -1381,7 +1379,7 @@ Set NEW-SESSION to start a separate new session."
         (agent-shell-completion-mode +1))
       (agent-shell--setup-modeline)
       (setq-local agent-shell--transcript-file (agent-shell--init-transcript config)))
-    shell-buffer)))
+    shell-buffer))
 
 (cl-defun agent-shell--delete-dialog-block (&key state block-id)
   "Delete dialog block with STATE and BLOCK-ID."
