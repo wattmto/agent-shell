@@ -1788,17 +1788,11 @@ FORMAT-ARGS are passed to `format' with ERROR-FORMAT.
 
 This function is TRAMP-aware and will check for executables on remote
 systems when `default-directory' is a TRAMP path."
-  (let ((found (if (file-remote-p default-directory)
-                   ;; For remote directories, use executable-find with remote flag
-                   ;; This requires TRAMP and checks the remote system's PATH
-                   (executable-find executable 'remote)
-                 ;; For local directories, use standard executable-find
-                 (executable-find executable))))
-    (unless found
-      (apply #'error (concat (format "Executable \"%s\" not found.  Do you need (add-to-list 'exec-path \"another/path/to/consider/\")?" executable)
-                             (when error-message
-                               "  ")
-                             error-message) format-args))))
+  (unless (executable-find executable (file-remote-p default-directory))
+    (apply #'error (concat (format "Executable \"%s\" not found.  Do you need (add-to-list 'exec-path \"another/path/to/consider/\")?" executable)
+                           (when error-message
+                             "  ")
+                           error-message) format-args)))
 
 (defun agent-shell--display-buffer (shell-buffer)
   "Toggle agent SHELL-BUFFER display."
