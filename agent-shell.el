@@ -1919,7 +1919,7 @@ Must provide ON-SESSION-INIT (lambda ())."
      :append t))
   (acp-send-request
    :client (map-elt (agent-shell--state) :client)
-   :request (acp-make-session-new-request :cwd (agent-shell--resolve-path (agent-shell-cwd)))
+   :request (acp-make-session-new-request :cwd (file-local-name (agent-shell--resolve-path (agent-shell-cwd))))
    :buffer (current-buffer)
    :on-success (lambda (response)
                  (map-put! agent-shell--state
