@@ -1344,7 +1344,12 @@ Set NEW-SESSION to start a separate new session."
                               :prompt (map-elt config :shell-prompt)
                               :prompt-regexp (map-elt config :shell-prompt-regexp)))
          (agent-shell--shell-maker-config shell-maker-config)
-         (default-directory (agent-shell-cwd))
+         (cwd (agent-shell-cwd))
+         ;; Use local directory for shell-maker to prevent it from starting
+         ;; a remote dummy process (hexl/cat) via TRAMP, which causes freezes
+         (default-directory (if (file-remote-p cwd)
+                                (temporary-file-directory)
+                              cwd))
          (shell-buffer
           (shell-maker-start agent-shell--shell-maker-config
                              no-focus
@@ -1354,9 +1359,11 @@ Set NEW-SESSION to start a separate new session."
                              (concat (map-elt config :buffer-name)
                                      " Agent @ "
                                      (file-name-nondirectory
-                                      (string-remove-suffix "/" default-directory)))
+                                      (string-remove-suffix "/" cwd)))
                              (map-elt config :mode-line-name))))
     (with-current-buffer shell-buffer
+      ;; Set the buffer's default-directory to the actual CWD (may be remote)
+      (setq default-directory cwd)
       ;; Initialize buffer-local state
       (setq-local agent-shell--state (agent-shell--make-state
                                       :buffer shell-buffer
@@ -1782,8 +1789,11 @@ Return file path of the generated SVG."
 (defun agent-shell--ensure-executable (executable &optional error-message &rest format-args)
   "Ensure EXECUTABLE exists in PATH or signal error.
 ERROR-MESSAGE defaults to \"Executable %s not found\".
-FORMAT-ARGS are passed to `format' with ERROR-FORMAT."
-  (unless (executable-find executable)
+FORMAT-ARGS are passed to `format' with ERROR-FORMAT.
+
+This function is TRAMP-aware and will check for executables on remote
+systems when `default-directory' is a TRAMP path."
+  (unless (executable-find executable (file-remote-p default-directory))
     (apply #'error (concat (format "Executable \"%s\" not found.  Do you need (add-to-list 'exec-path \"another/path/to/consider/\")?" executable)
                            (when error-message
                              "  ")
@@ -1914,9 +1924,10 @@ Must provide ON-SESSION-INIT (lambda ())."
      :block-id "starting"
      :body "\n\nCreating session..."
      :append t))
-  (acp-send-request
-   :client (map-elt (agent-shell--state) :client)
-   :request (acp-make-session-new-request :cwd (agent-shell--resolve-path (agent-shell-cwd)))
+  (let ((cwd (file-local-name (agent-shell--resolve-path (agent-shell-cwd)))))
+    (acp-send-request
+     :client (map-elt (agent-shell--state) :client)
+     :request (acp-make-session-new-request :cwd cwd)
    :buffer (current-buffer)
    :on-success (lambda (response)
                  (map-put! agent-shell--state
@@ -1942,7 +1953,7 @@ Must provide ON-SESSION-INIT (lambda ())."
                  (agent-shell--update-header-and-mode-line)
                  (funcall on-session-init))
    :on-failure (agent-shell--make-error-handler
-                :state agent-shell--state :shell shell)))
+                :state agent-shell--state :shell shell))))
 
 (cl-defun agent-shell--subscribe-to-client-events (&key state)
   "Subscribe SHELL and STATE to ACP events."
